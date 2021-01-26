@@ -1,6 +1,6 @@
-# Apollo tutorial
+# Apollo-Graphql Example
 
-This is the fullstack app for the [Apollo tutorial](http://apollographql.com/docs/tutorial/introduction.html). 🚀
+This is the fullstack app for the [Apollo-Graphql Example](http://apollographql.com/docs/tutorial/introduction.html). 🚀
 
 ## File structure
 
@@ -37,6 +37,7 @@ Data sources are classes that encapsulate fetching data from a particular servic
 
 It’s easy to get started. All you need to do to define a data source is to extend the RESTDataSource class and implement the data fetching methods that your resolvers require. Your implementation of these methods can call on convenience methods built into theRESTDataSource class to perform HTTP requests, while making it easy to build up query parameters, parse JSON results, and handle errors.
 
+```MoviesAPI.js
 class MoviesAPI extends RESTDataSource {
   baseURL = 'https://movies-api.example.com';
 
@@ -52,8 +53,11 @@ class MoviesAPI extends RESTDataSource {
     return data.results;
   }
 }
+```
+
 Data sources allow you to intercept fetches to set headers or make other changes to the outgoing request. This is most often used for authorization. Data sources also get access to the GraphQL execution context, which is a great place to store a user token or other information you need to have available.
 
+```PersonalizationAPI.js
 class PersonalizationAPI extends RESTDataSource {
   baseURL = 'https://personalization-api.example.com';
 
@@ -71,8 +75,11 @@ class PersonalizationAPI extends RESTDataSource {
     });
   }
 }
+```
+
 You pass the data sources to use as an option to the ApolloServer constructor:
 
+``` server.ts
 const server = new ApolloServer({
   typeDefs,
   resolvers,
@@ -89,19 +96,24 @@ const server = new ApolloServer({
     };
   }
 });
+```
 Apollo Server will then put the data sources on the context for every request, so you can access them from your resolvers. It will also give your data sources access to the context. (The reason for not having users put data sources on the context directly is because that would lead to a circular dependency.)
 
-  Query: {
-    movie: async (_source, { id }, { dataSources }) => {
-      return dataSources.moviesAPI.getMovie(id);
-    },
-    mostViewedMovies: async (_source, _args, { dataSources }) => {
-      return dataSources.moviesAPI.getMostViewedMovies();
-    },
-    favorites: async (_source, _args, { dataSources }) => {
-      return dataSources.personalizationAPI.getFavorites();
-    },
+``` resolver.js
+
+Query: {
+  movie: async (_source, { id }, { dataSources }) => {
+    return dataSources.moviesAPI.getMovie(id);
   },
+  mostViewedMovies: async (_source, _args, { dataSources }) => {
+    return dataSources.moviesAPI.getMostViewedMovies();
+  },
+  favorites: async (_source, _args, { dataSources }) => {
+    return dataSources.personalizationAPI.getFavorites();
+  },
+},
+```
+
 What about DataLoader?
 DataLoader was designed by Facebook with a specific use case in mind: deduplicating and batching object loads from a data store. It provides a memoization cache, which avoids loading the same object multiple times during a single GraphQL request, and it coalesces loads that occur during a single tick of the event loop into a batched request that fetches multiple objects at once.
 
@@ -116,6 +128,7 @@ While a a REST endpoint is meant to represent a single resource, GraphQL allows 
 
 Take this example from an actual customer API. The query asks for information about a TV series, as well as a season of episodes. All this is publicly cacheable (the same for all users), and also relatively static (cacheable with a long TTL). In addition, we ask for the progress for every episode however, which is specific to the current user and also likely to change often.
 
+```query.js
 {
   series(id: "98794") {
     title
@@ -134,6 +147,8 @@ Take this example from an actual customer API. The query asks for information ab
     }
   }
 }
+```
+
 If we were fetching data from the underlying REST APIs directly, we would fetch and cache season and episode data separately from the progress data. But because we’re asking for all of this in a single request, the response we receive from the GraphQL layer isn’t cacheable.
 
 Data sources gives you the best of both worlds. Requests made through REST data sources are automatically cached based on the caching headers returned in the response, which many REST APIs already set. This means partial results are cached, but we retain the flexibility that comes with GraphQL to select and combine data from different sources.
